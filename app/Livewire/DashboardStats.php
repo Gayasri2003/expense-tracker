@@ -53,10 +53,13 @@ class DashboardStats extends Component
         $allTransactions = Transaction::where('user_id', Auth::id())->get();
 
         $this->totalIncome = $allTransactions->where('type', 'income')->sum('amount');
-        $this->totalExpenses = $allTransactions->where('type', 'expense')->sum('amount');
+        $this->totalExpenses = $allTransactions->whereIn('type', ['expense', 'interest_payment'])->sum('amount');
         
-        // Fetch accounts and calculate actual combined balance
-        $this->userAccounts = Account::where('user_id', Auth::id())->orderBy('balance', 'desc')->get();
+        // Fetch accounts and calculate actual combined balance (excluding liabilities like leasing)
+        $this->userAccounts = Account::where('user_id', Auth::id())
+            ->where('type', '!=', 'leasing')
+            ->orderBy('balance', 'desc')
+            ->get();
         $this->totalBalance = $this->userAccounts->sum('balance');
 
         $this->recentTransactions = Transaction::where('user_id', Auth::id())
@@ -72,7 +75,7 @@ class DashboardStats extends Component
 
         $budgets = Budget::where('user_id', Auth::id())->with('category')->get();
         $monthlySpending = Transaction::where('user_id', Auth::id())
-            ->where('type', 'expense')
+            ->whereIn('type', ['expense', 'interest_payment'])
             ->whereMonth('date', $currentMonth)
             ->whereYear('date', $currentYear)
             ->selectRaw('category_id, sum(amount) as total')
@@ -109,7 +112,7 @@ class DashboardStats extends Component
                 ->sum('amount');
 
             $monthExpense = Transaction::where('user_id', Auth::id())
-                ->where('type', 'expense')
+                ->whereIn('type', ['expense', 'interest_payment'])
                 ->whereMonth('date', $month->month)
                 ->whereYear('date', $month->year)
                 ->sum('amount');

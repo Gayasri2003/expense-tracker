@@ -39,6 +39,8 @@ class ReportManager extends Component
 
         if ($this->type !== 'all') {
             $query->where('type', $this->type);
+        } else {
+            $query->whereIn('type', ['income', 'expense', 'interest_payment']);
         }
 
         if ($this->accountId) {
@@ -96,7 +98,9 @@ class ReportManager extends Component
     {
         $transactions = $this->getFilteredTransactions();
         $total = $transactions->sum(function($t) {
-            return $t->type === 'income' ? $t->amount : -$t->amount;
+            if ($t->type === 'income') return $t->amount;
+            if ($t->type === 'expense' || $t->type === 'interest_payment') return -$t->amount;
+            return 0; // Ignore credit_purchase and principal_repayment for cashflow
         });
         
         if ($this->includeInitialBalance) {

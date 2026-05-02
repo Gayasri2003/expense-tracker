@@ -18,14 +18,26 @@ class AccountManager extends Component
     public $balance = 0;
     public $icon = '💰';
     public $color = '#0f172a';
+    public $total_loan_amount = 0;
+    public $monthly_interest_amount = 0;
 
-    protected $rules = [
-        'name' => 'required|min:3|max:50',
-        'type' => 'required',
-        'balance' => 'required|numeric',
-        'icon' => 'required',
-        'color' => 'required',
-    ];
+    protected function rules()
+    {
+        $rules = [
+            'name' => 'required|min:3|max:50',
+            'type' => 'required',
+            'balance' => 'required|numeric',
+            'icon' => 'required',
+            'color' => 'required',
+        ];
+
+        if ($this->type === 'leasing') {
+            $rules['total_loan_amount'] = 'required|numeric|min:0';
+            $rules['monthly_interest_amount'] = 'required|numeric|min:0';
+        }
+
+        return $rules;
+    }
 
     public function mount()
     {
@@ -34,7 +46,10 @@ class AccountManager extends Component
 
     public function loadAccounts()
     {
-        $this->accounts = Account::where('user_id', Auth::id())->orderBy('name')->get();
+        $this->accounts = Account::where('user_id', Auth::id())
+            ->where('type', '!=', 'leasing')
+            ->orderBy('name')
+            ->get();
     }
 
     public function openModal()
@@ -55,6 +70,8 @@ class AccountManager extends Component
         $this->balance = 0;
         $this->icon = '💰';
         $this->color = '#0f172a';
+        $this->total_loan_amount = 0;
+        $this->monthly_interest_amount = 0;
         $this->editingAccountId = null;
     }
 
@@ -67,6 +84,8 @@ class AccountManager extends Component
         $this->balance = $account->balance;
         $this->icon = $account->icon;
         $this->color = $account->color;
+        $this->total_loan_amount = $account->total_loan_amount ?? 0;
+        $this->monthly_interest_amount = $account->monthly_interest_amount ?? 0;
         $this->isModalOpen = true;
     }
 
@@ -74,25 +93,23 @@ class AccountManager extends Component
     {
         $this->validate();
 
+        $data = [
+            'user_id' => Auth::id(),
+            'name' => $this->name,
+            'type' => $this->type,
+            'balance' => $this->balance,
+            'icon' => $this->icon,
+            'color' => $this->color,
+            'total_loan_amount' => $this->type === 'leasing' ? $this->total_loan_amount : null,
+            'monthly_interest_amount' => $this->type === 'leasing' ? $this->monthly_interest_amount : null,
+        ];
+
         if ($this->editingAccountId) {
             $account = Account::findOrFail($this->editingAccountId);
-            $account->update([
-                'name' => $this->name,
-                'type' => $this->type,
-                'balance' => $this->balance,
-                'icon' => $this->icon,
-                'color' => $this->color,
-            ]);
+            $account->update($data);
             session()->flash('message', 'Account updated successfully.');
         } else {
-            Account::create([
-                'user_id' => Auth::id(),
-                'name' => $this->name,
-                'type' => $this->type,
-                'balance' => $this->balance,
-                'icon' => $this->icon,
-                'color' => $this->color,
-            ]);
+            Account::create($data);
             session()->flash('message', 'Account created successfully.');
         }
 

@@ -13,8 +13,13 @@ class Transaction extends Model
         'amount',
         'notes',
         'date',
-        'type',
+        'type', // income, expense, credit_purchase, principal_repayment, interest_payment
     ];
+
+    public function recurringTransaction()
+    {
+        return $this->hasOne(RecurringTransaction::class);
+    }
 
     public function user()
     {

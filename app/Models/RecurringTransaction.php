@@ -18,6 +18,12 @@ class RecurringTransaction extends Model
         'next_date',
         'last_run_date',
         'is_active',
+        'is_installment',
+        'transaction_id',
+        'credit_card_account_id',
+        'total_amount',
+        'total_months',
+        'remaining_months',
     ];
 
     protected $casts = [
@@ -25,7 +31,18 @@ class RecurringTransaction extends Model
         'next_date' => 'date',
         'last_run_date' => 'date',
         'is_active' => 'boolean',
+        'is_installment' => 'boolean',
     ];
+
+    public function transaction()
+    {
+        return $this->belongsTo(Transaction::class);
+    }
+
+    public function creditCardAccount()
+    {
+        return $this->belongsTo(Account::class, 'credit_card_account_id');
+    }
 
     public function user()
     {

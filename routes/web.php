@@ -31,6 +31,10 @@ Route::middleware([
         return view('reports');
     })->name('reports');
 
+    Route::get('/loans', function () {
+        return view('loans');
+    })->name('loans');
+
     Route::get('/accounts', function () {
         return view('accounts');
     })->name('accounts');

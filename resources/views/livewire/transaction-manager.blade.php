@@ -102,8 +102,24 @@
                                 </span>
                             </td>
                             <td class="px-6 py-5 text-gray-500 truncate max-w-xs">{{ $transaction->notes }}</td>
-                            <td class="px-6 py-5 text-right font-outfit text-lg font-bold {{ $transaction->type === 'income' ? 'text-green-600' : 'text-navy-950' }}">
-                                {{ $transaction->type === 'income' ? '+' : '-' }} {{ Auth::user()->currency }} {{ number_format($transaction->amount, 2) }}
+                            <td class="px-6 py-5 text-right font-outfit">
+                                <div class="flex flex-col items-end">
+                                    <span class="text-lg font-bold {{ 
+                                        $transaction->type === 'income' ? 'text-green-600' : 
+                                        ($transaction->type === 'credit_purchase' ? 'text-navy-400' : 
+                                        ($transaction->type === 'principal_repayment' ? 'text-emerald-600' : 
+                                        ($transaction->type === 'interest_payment' ? 'text-red-600' : 'text-navy-950'))) 
+                                    }}">
+                                        {{ $transaction->type === 'income' ? '+' : '-' }} {{ Auth::user()->currency }} {{ number_format($transaction->amount, 2) }}
+                                    </span>
+                                    @if($transaction->type === 'credit_purchase')
+                                        <span class="text-[9px] font-bold text-navy-400 uppercase tracking-widest bg-gray-100 px-1.5 py-0.5 rounded mt-1">Credit Purchase</span>
+                                    @elseif($transaction->type === 'interest_payment')
+                                        <span class="text-[9px] font-bold text-red-600 uppercase tracking-widest bg-red-50 px-1.5 py-0.5 rounded mt-1">Lease Interest</span>
+                                    @elseif($transaction->type === 'principal_repayment')
+                                        <span class="text-[9px] font-bold text-emerald-600 uppercase tracking-widest bg-emerald-50 px-1.5 py-0.5 rounded mt-1">Lease Principal</span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-6 py-5 text-center">
                                 <div class="flex justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -134,8 +150,8 @@
     <!-- Modal -->
     @if($isModalOpen)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up">
-                <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+                <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
                     <h3 class="text-2xl font-bold text-navy-950 font-outfit tracking-tight">
                         {{ $editingTransactionId ? 'Edit Transaction' : 'New Transaction' }}
                     </h3>
@@ -144,7 +160,7 @@
                     </button>
                 </div>
 
-                <form wire:submit.prevent="save" class="p-8 space-y-6">
+                <form wire:submit.prevent="save" class="p-8 space-y-6 overflow-y-auto custom-scrollbar">
                     <div class="grid grid-cols-2 gap-4">
                         <button type="button" wire:click="$set('type', 'expense')" class="py-3 rounded-xl font-bold tracking-widest text-xs transition-all {{ $type === 'expense' ? 'bg-navy-950 text-white shadow-lg' : 'bg-gray-100 text-gray-500 hover:bg-gray-200' }}">
                             Expense
@@ -159,13 +175,13 @@
                             <label class="text-xs font-bold text-navy-900 tracking-widest pl-1">Amount</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{{ Auth::user()->currency }}</span>
-                                <input type="number" step="0.01" wire:model="amount" class="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent rounded-xl focus:ring-2 focus:ring-gold-500 focus:bg-white transition-all font-bold text-navy-950" placeholder="0.00">
+                                <input type="number" step="0.01" wire:model.live="amount" class="w-full pl-12 pr-4 py-3 bg-gray-50 border-transparent rounded-xl focus:ring-2 focus:ring-gold-500 focus:bg-white transition-all font-bold text-navy-950" placeholder="0.00">
                             </div>
                             @error('amount') <span class="text-red-500 text-[10px] font-bold uppercase">{{ $message }}</span> @enderror
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-bold text-navy-900 tracking-widest pl-1">Account</label>
-                            <select wire:model="account_id" class="w-full px-4 py-3 bg-gray-50 border-transparent rounded-xl focus:ring-2 focus:ring-gold-500 focus:bg-white transition-all text-sm font-medium text-navy-950">
+                            <select wire:model.live="account_id" class="w-full px-4 py-3 bg-gray-50 border-transparent rounded-xl focus:ring-2 focus:ring-gold-500 focus:bg-white transition-all text-sm font-medium text-navy-950">
                                 <option value="">Select Account</option>
                                 @foreach($userAccounts as $acc)
                                     <option value="{{ $acc->id }}">{{ $acc->icon }} {{ $acc->name }}</option>
@@ -195,9 +211,124 @@
 
                     <div class="space-y-2">
                         <label class="text-xs font-bold text-navy-900 tracking-widest pl-1">Notes</label>
-                        <textarea wire:model="notes" rows="3" class="w-full px-4 py-3 bg-gray-50 border-transparent rounded-xl focus:ring-2 focus:ring-gold-500 focus:bg-white transition-all text-sm font-medium text-navy-950" placeholder="What was this for?"></textarea>
+                        <textarea wire:model="notes" rows="2" class="w-full px-4 py-3 bg-gray-50 border-transparent rounded-xl focus:ring-2 focus:ring-gold-500 focus:bg-white transition-all text-sm font-medium text-navy-950" placeholder="What was this for?"></textarea>
                         @error('notes') <span class="text-red-500 text-[10px] font-bold uppercase">{{ $message }}</span> @enderror
                     </div>
+
+                    @if($type === 'expense')
+                        @php
+                            $selectedAccount = collect($userAccounts)->firstWhere('id', $account_id);
+                        @endphp
+                        
+                        @if($selectedAccount && $selectedAccount->type === 'credit_card')
+                            <div class="p-5 bg-navy-50 rounded-2xl border border-navy-100 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="size-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-navy-600">
+                                            <svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-bold text-navy-950">Installment Plan</h4>
+                                            <p class="text-[10px] text-navy-500 uppercase font-bold tracking-widest">Pay in monthly parts</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" wire:model.live="isInstallment" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gold-600"></div>
+                                    </label>
+                                </div>
+
+                                @if($isInstallment)
+                                    <div class="grid grid-cols-2 gap-4 animate-fade-in">
+                                        <div class="space-y-1">
+                                            <label class="text-[10px] font-bold text-navy-400 uppercase tracking-widest">Months</label>
+                                            <input type="number" wire:model.live="installmentMonths" class="w-full px-3 py-2 bg-white border-transparent rounded-lg text-sm font-bold text-navy-900 focus:ring-1 focus:ring-gold-500" min="2" max="120">
+                                            @error('installmentMonths') <span class="text-red-500 text-[10px] font-bold">{{ $message }}</span> @enderror
+                                        </div>
+                                        <div class="space-y-1">
+                                            <label class="text-[10px] font-bold text-navy-400 uppercase tracking-widest">Repay From</label>
+                                            <select wire:model="repaymentAccountId" class="w-full px-3 py-2 bg-white border-transparent rounded-lg text-sm font-medium text-navy-900 focus:ring-1 focus:ring-gold-500">
+                                                <option value="">Select Account</option>
+                                                @foreach($userAccounts as $acc)
+                                                    @if($acc->type !== 'credit_card')
+                                                        <option value="{{ $acc->id }}">{{ $acc->icon }} {{ $acc->name }}</option>
+                                                    @endif
+                                                @endforeach
+                                            </select>
+                                            @error('repaymentAccountId') <span class="text-red-500 text-[10px] font-bold">{{ $message }}</span> @enderror
+                                        </div>
+                                    </div>
+                                    <div class="text-[10px] text-navy-400 font-medium italic">
+                                        Estimated monthly payment: <span class="text-navy-950 font-bold">{{ Auth::user()->currency }} {{ number_format($amount / ($installmentMonths ?: 1), 2) }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+                    @endif
+
+                    {{-- Leasing Payment Section --}}
+                    @if($type === 'expense')
+                        <div class="p-5 bg-emerald-50 rounded-2xl border border-emerald-100 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="size-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-emerald-600">
+                                        <svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-navy-950">Leasing Payment</h4>
+                                        <p class="text-[10px] text-emerald-600 uppercase font-bold tracking-widest">Pay toward a loan or lease</p>
+                                    </div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" wire:model.live="isLeasingPayment" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                </label>
+                            </div>
+
+                            @if($isLeasingPayment)
+                                <div class="space-y-4 animate-fade-in">
+                                    <div class="space-y-1">
+                                        <label class="text-[10px] font-bold text-navy-400 uppercase tracking-widest pl-1">Target Leasing Account</label>
+                                        <select wire:model.live="leasingAccountId" class="w-full px-4 py-3 bg-white border-transparent rounded-xl text-sm font-medium text-navy-950 focus:ring-2 focus:ring-emerald-500">
+                                            <option value="">Select Leasing Account</option>
+                                            @foreach($userAccounts as $acc)
+                                                @if($acc->type === 'leasing')
+                                                    <option value="{{ $acc->id }}">{{ $acc->icon }} {{ $acc->name }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                        @error('leasingAccountId') <span class="text-red-500 text-[10px] font-bold">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    @php
+                                        $selectedLease = collect($userAccounts)->firstWhere('id', $leasingAccountId);
+                                        $interest = 0;
+                                        $principal = 0;
+                                        if($selectedLease) {
+                                            $interest = min($amount ?: 0, $selectedLease->monthly_interest_amount);
+                                            $principal = max(0, ($amount ?: 0) - $interest);
+                                        }
+                                    @endphp
+
+                                    @if($selectedLease)
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div class="p-3 bg-white rounded-xl shadow-sm">
+                                                <p class="text-[9px] font-bold text-navy-400 uppercase tracking-widest">Interest (Expense)</p>
+                                                <p class="text-sm font-bold text-red-600">{{ Auth::user()->currency }} {{ number_format($interest, 2) }}</p>
+                                            </div>
+                                            <div class="p-3 bg-white rounded-xl shadow-sm">
+                                                <p class="text-[9px] font-bold text-navy-400 uppercase tracking-widest">Principal (Repayment)</p>
+                                                <p class="text-sm font-bold text-emerald-600">{{ Auth::user()->currency }} {{ number_format($principal, 2) }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="text-[10px] text-navy-400 font-medium italic">
+                                            New Remaining Balance: <span class="text-navy-950 font-bold">{{ Auth::user()->currency }} {{ number_format($selectedLease->balance - $principal, 2) }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     <div class="pt-4 flex space-x-4">
                         <button type="button" wire:click="closeModal" class="flex-1 py-3 border-2 border-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-50 transition-colors tracking-widest text-xs uppercase">Cancel</button>

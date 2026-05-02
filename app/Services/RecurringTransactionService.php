@@ -20,40 +20,74 @@ class RecurringTransactionService
 
         foreach ($templates as $template) {
             DB::transaction(function () use ($template, $now) {
-                // Create the actual transaction
-                Transaction::create([
-                    'user_id' => $template->user_id,
-                    'category_id' => $template->category_id,
-                    'account_id' => $template->account_id,
-                    'amount' => $template->amount,
-                    'notes' => $template->notes . ' (Auto)',
-                    'date' => $template->next_date, // Record it on the day it was supposed to run
-                    'type' => $template->type,
-                ]);
+                if ($template->is_installment) {
+                    // 1. Record installment amount as an expense against cash/bank account
+                    Transaction::create([
+                        'user_id' => $template->user_id,
+                        'category_id' => $template->category_id,
+                        'account_id' => $template->account_id, // Repayment account
+                        'amount' => $template->amount,
+                        'notes' => $template->notes . ' (' . ($template->total_months - $template->remaining_months + 1) . '/' . $template->total_months . ')',
+                        'date' => $template->next_date,
+                        'type' => 'expense',
+                    ]);
 
-                // Update account balance
-                $account = Account::find($template->account_id);
-                if ($account) {
-                    if ($template->type === 'income') {
-                        $account->increment('balance', $template->amount);
-                    } else {
-                        $account->decrement('balance', $template->amount);
+                    // Update repayment account balance
+                    $repaymentAccount = Account::find($template->account_id);
+                    if ($repaymentAccount) {
+                        $repaymentAccount->decrement('balance', $template->amount);
                     }
-                }
 
-                // Calculate next run date
-                $nextDate = Carbon::parse($template->next_date);
-                switch ($template->frequency) {
-                    case 'daily': $nextDate->addDay(); break;
-                    case 'weekly': $nextDate->addWeek(); break;
-                    case 'monthly': $nextDate->addMonth(); break;
-                    case 'yearly': $nextDate->addYear(); break;
-                }
+                    // 2. Restore corresponding amount back to the credit card's available limit
+                    $creditCardAccount = Account::find($template->credit_card_account_id);
+                    if ($creditCardAccount) {
+                        $creditCardAccount->increment('balance', $template->amount);
+                    }
 
-                $template->update([
-                    'last_run_date' => $now,
-                    'next_date' => $nextDate,
-                ]);
+                    // 3. Update installment record
+                    $remaining = $template->remaining_months - 1;
+                    $nextDate = Carbon::parse($template->next_date)->addMonth();
+                    
+                    $template->update([
+                        'last_run_date' => $now,
+                        'next_date' => $nextDate,
+                        'remaining_months' => $remaining,
+                        'is_active' => $remaining > 0,
+                    ]);
+                } else {
+                    // Normal recurring transaction
+                    Transaction::create([
+                        'user_id' => $template->user_id,
+                        'category_id' => $template->category_id,
+                        'account_id' => $template->account_id,
+                        'amount' => $template->amount,
+                        'notes' => $template->notes . ' (Auto)',
+                        'date' => $template->next_date,
+                        'type' => $template->type,
+                    ]);
+
+                    $account = Account::find($template->account_id);
+                    if ($account) {
+                        if ($template->type === 'income') {
+                            $account->increment('balance', $template->amount);
+                        } else {
+                            $account->decrement('balance', $template->amount);
+                        }
+                    }
+
+                    $nextDate = Carbon::parse($template->next_date);
+                    switch ($template->frequency) {
+                        case 'daily': $nextDate->addDay(); break;
+                        case 'weekly': $nextDate->addWeek(); break;
+                        case 'monthly': $nextDate->addMonth(); break;
+                        case 'yearly': $nextDate->addYear(); break;
+                    }
+
+                    $template->update([
+                        'last_run_date' => $now,
+                        'next_date' => $nextDate,
+                    ]);
+                }
             });
         }
     }

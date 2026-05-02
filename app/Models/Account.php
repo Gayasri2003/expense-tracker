@@ -6,7 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class Account extends Model
 {
-    protected $fillable = ['user_id', 'name', 'type', 'balance', 'icon', 'color'];
+    protected $fillable = [
+        'user_id', 
+        'name', 
+        'type', 
+        'balance', 
+        'icon', 
+        'color',
+        'total_loan_amount',
+        'monthly_interest_amount'
+    ];
 
     public function user()
     {

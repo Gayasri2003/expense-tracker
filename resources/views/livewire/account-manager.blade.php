@@ -68,8 +68,8 @@
     {{-- Modal --}}
     @if($isModalOpen)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up">
-                <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+                <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
                     <h3 class="text-2xl font-bold text-navy-950 font-outfit tracking-tight">
                         {{ $editingAccountId ? 'Edit Account' : 'New Account' }}
                     </h3>
@@ -78,7 +78,7 @@
                     </button>
                 </div>
 
-                <form wire:submit.prevent="save" class="p-8 space-y-6">
+                <form wire:submit.prevent="save" class="p-8 space-y-6 overflow-y-auto">
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-2">
                             <label class="text-xs font-bold text-navy-900 tracking-widest pl-1 uppercase">Account Name</label>
@@ -87,7 +87,7 @@
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-bold text-navy-900 tracking-widest pl-1 uppercase">Account Type</label>
-                            <select wire:model="type" class="w-full px-4 py-3 bg-gray-50 border-transparent rounded-xl focus:ring-2 focus:ring-gold-500 focus:bg-white transition-all text-sm font-medium text-navy-950">
+                            <select wire:model.live="type" class="w-full px-4 py-3 bg-gray-50 border-transparent rounded-xl focus:ring-2 focus:ring-gold-500 focus:bg-white transition-all text-sm font-medium text-navy-950">
                                 <option value="cash">Cash</option>
                                 <option value="bank">Bank Account</option>
                                 <option value="credit_card">Credit Card</option>
